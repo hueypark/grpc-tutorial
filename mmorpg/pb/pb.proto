@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package="github.com/hueypark/grpc-tutorial/mmorpg/pb";
+
+service Game {
+  rpc Login(LoginReq) returns (LoginRes) {}
+
+  //rpc Move(MoveReq) returns (MoveRes) {}
+}
+
+message LoginReq {
+  string msg = 1;
+}
+
+message LoginRes {
+  string msg = 1;
+}
+
+message MoveReq {
+
+}
+
+message MoveRes {
+
+}
