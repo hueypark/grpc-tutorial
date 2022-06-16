@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GameClient interface {
 	Login(ctx context.Context, in *LoginReq, opts ...grpc.CallOption) (*LoginRes, error)
+	Move(ctx context.Context, opts ...grpc.CallOption) (Game_MoveClient, error)
 }
 
 type gameClient struct {
@@ -42,11 +43,43 @@ func (c *gameClient) Login(ctx context.Context, in *LoginReq, opts ...grpc.CallO
 	return out, nil
 }
 
+func (c *gameClient) Move(ctx context.Context, opts ...grpc.CallOption) (Game_MoveClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Game_ServiceDesc.Streams[0], "/Game/Move", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &gameMoveClient{stream}
+	return x, nil
+}
+
+type Game_MoveClient interface {
+	Send(*MoveReq) error
+	Recv() (*MovePush, error)
+	grpc.ClientStream
+}
+
+type gameMoveClient struct {
+	grpc.ClientStream
+}
+
+func (x *gameMoveClient) Send(m *MoveReq) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *gameMoveClient) Recv() (*MovePush, error) {
+	m := new(MovePush)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // GameServer is the server API for Game service.
 // All implementations must embed UnimplementedGameServer
 // for forward compatibility
 type GameServer interface {
 	Login(context.Context, *LoginReq) (*LoginRes, error)
+	Move(Game_MoveServer) error
 	mustEmbedUnimplementedGameServer()
 }
 
@@ -56,6 +89,9 @@ type UnimplementedGameServer struct {
 
 func (UnimplementedGameServer) Login(context.Context, *LoginReq) (*LoginRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedGameServer) Move(Game_MoveServer) error {
+	return status.Errorf(codes.Unimplemented, "method Move not implemented")
 }
 func (UnimplementedGameServer) mustEmbedUnimplementedGameServer() {}
 
@@ -88,6 +124,32 @@ func _Game_Login_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Game_Move_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GameServer).Move(&gameMoveServer{stream})
+}
+
+type Game_MoveServer interface {
+	Send(*MovePush) error
+	Recv() (*MoveReq, error)
+	grpc.ServerStream
+}
+
+type gameMoveServer struct {
+	grpc.ServerStream
+}
+
+func (x *gameMoveServer) Send(m *MovePush) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *gameMoveServer) Recv() (*MoveReq, error) {
+	m := new(MoveReq)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Game_ServiceDesc is the grpc.ServiceDesc for Game service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +162,13 @@ var Game_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Game_Login_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Move",
+			Handler:       _Game_Move_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "pb/pb.proto",
 }

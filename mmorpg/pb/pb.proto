@@ -5,7 +5,7 @@ option go_package="github.com/hueypark/grpc-tutorial/mmorpg/pb";
 service Game {
   rpc Login(LoginReq) returns (LoginRes) {}
 
-  //rpc Move(MoveReq) returns (MoveRes) {}
+  rpc Move(stream MoveReq) returns (stream MovePush) {}
 }
 
 message LoginReq {
@@ -17,9 +17,9 @@ message LoginRes {
 }
 
 message MoveReq {
-
+  int32 position = 1;
 }
 
-message MoveRes {
-
+message MovePush {
+  int32 position = 1;
 }
